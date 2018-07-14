@@ -43,8 +43,65 @@
                     (< 0 x))
                (< (* root1 root1) x)))
     :use (:instance ceil-root-aux-lower-bound (y 0)))
-  (defrule ceil-root-default
+  (defruled ceil-root-default
     (implies (or (not (real/rationalp x))
                  (<= x 0))
              (equal (ceil-root x) 0))
     :enable ceil-root-aux))
+
+(local
+ (acl2::with-arith5-nonlinear-help
+  (defrule sqr-monotone
+    (implies (and (real/rationalp x)
+                  (real/rationalp y)
+                  (<= 0 y)
+                  (< (expt x 2) (expt y 2)))
+             (< x y)))))
+
+(defruled ceil-root-monotone
+  (implies (<= (realfix x) (realfix y))
+           (<= (ceil-root x) (ceil-root y)))
+  :enable ceil-root-default
+  :cases ((< (1- (ceil-root x)) (ceil-root y)))
+  :use ((:instance ceil-root-lower-bound
+                   (x (realfix x)))
+        (:instance sqr-monotone
+                   (x (1- (ceil-root x)))
+                   (y (ceil-root y)))
+        (:instance ceil-root-upper-bound
+                   (x y))))
+
+(acl2::with-arith5-help
+ (defruled cell-root-unique
+   (implies (and (natp n)
+                 (or (zp n)
+                     (< (expt (- n 1) 2) (realfix x)))
+                 (<= (realfix x) (expt n 2)))
+            (equal (ceil-root x) n))
+   :cases ((< n 1)
+           (< (ceil-root x) 1))
+   :hints
+   (("subgoal 3" :cases ((<= (ceil-root x) (1- n))
+                         (>= (ceil-root x) (1+ n))))
+    ("subgoal 3.2" :use (ceil-root-upper-bound
+                         (:instance sqr-monotone
+                                   (x (1- n))
+                                   (y (ceil-root x)))))
+    ("subgoal 3.1" :use (ceil-root-lower-bound
+                         (:instance sqr-monotone
+                                   (x (1- (ceil-root x)))
+                                   (y n))))
+    ("subgoal 1" :cases ((and (real/rationalp x) (< 0 x))))
+    ("subgoal 1.2" :use (:instance sqr-monotone
+                                   (x (1- n))
+                                   (y 0)))
+    ("subgoal 1.1" :use ceil-root-upper-bound))))
+
+
+(with-arith5-help
+ (defrule ceil-root-sqr
+   (implies (natp x)
+            (equal (ceil-root (* x x)) x))
+   :use (:instance cell-root-unique
+                   (x (* x x))
+                   (n x))))

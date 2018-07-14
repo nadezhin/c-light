@@ -1,8 +1,6 @@
 (in-package "ACL2")
-(include-book "std/util/defrule" :dir :system)
-(include-book "centaur/fty/top" :dir :system)
 
-(include-book "tools/with-arith5-help" :dir :system)
+(include-book "ceil-root")
 (local (acl2::allow-arith5-help))
 
 ; Constraints on inf_T, sup_T, delta_T
@@ -369,6 +367,48 @@
     (implies (Arg_Stp-p x)
              (integerp (* (/ (stp)) x)))))
 
+(local
+ (with-arith5-nonlinear-help
+  (defruled root_delta_T-lemma
+    (implies (and (real/rationalp x)
+                  (<= 0 x)
+                  (<= x (expt (sup_T) 2)))
+             (<= (* (delta_T) (ceil-root (* (expt (delta_T) -2) x)))
+                 (sup_T)))
+    :use ((:instance ceil-root-monotone
+                     (x (* (expt (delta_T) -2) x))
+                     (y (* (expt (delta_T) -2) (expt (sup_T) 2))))
+          (:instance ceil-root-sqr
+                     (x (/ (sup_T) (delta_T))))))))
+
+(with-arith5-help
+ (define root_delta_T
+   ((x real/rationalp))
+   :returns (result Val_T-p
+                    :hints (("goal" :in-theory (enable Val_T-p) ;Arg_Stp-p
+                             :use (:instance root_delta_T-lemma
+                                             (x (min (max (realfix x) 0) (expt (sup_T) 2)))))))
+   (b* ((x (min (max (realfix x) 0) (expt (sup_T) 2))))
+     (* (delta_T) (ceil-root (* x (expt (delta_T) -2)))))
+   ///
+   (fty::deffixequiv root_delta_T)
+   (with-arith5-nonlinear-help
+    (defrule root_delta_T-lower-bound
+     (b* ((root1 (- (root_delta_T x) (delta_T))))
+       (implies (Arg_Stp-p x)
+                (< (expt root1 2) x)))
+     :enable Arg_Stp-p
+     :use (:instance ceil-root-lower-bound
+                     (x (* x (expt (delta_T) -2))))))
+   (with-arith5-nonlinear-help
+    (defrule root_delta_T-upper-bound
+      (b* ((root (root_delta_T x)))
+        (implies (Arg_Stp-p x)
+                 (<= x (expt root 2))))
+      :use (:instance ceil-root-upper-bound
+                      (x (* x (expt (delta_T) -2))))))))
+
+#|
 (define root_delta_T
     ((y Val_T-p)
      (x Arg_Stp-p))
@@ -383,6 +423,7 @@
         )
     )
 )
+|#
 
 ; Example of rounding. Used in operations constraints witnesses
 
