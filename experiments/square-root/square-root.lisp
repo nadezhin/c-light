@@ -1,6 +1,4 @@
 (in-package "ACL2")
-;(include-book "std/util/defrule" :dir :system)
-;(include-book "centaur/fty/top" :dir :system)
 
 (include-book "ceil-root")
 (local (acl2::allow-arith5-help))
@@ -369,69 +367,31 @@
     (implies (Arg_Stp-p x)
              (integerp (* (/ (stp)) x)))))
 
-(defruled root_delta_T-lemma
-  (implies (<= x (sup_T))
-           (<= (* (delta_T) (ceil-root (* (expt (delta_T) -2) x)))
-               (sup_T)))
-  :cases
-  ((not (> (* (expt (delta_T) -2) x)
-           (expt (1- (ceil-root (* (expt (delta_T) -2) x))) 2)))
-   (not (> (expt (1- (ceil-root (* (expt (delta_T) -2) x))) 2)
-           (expt (1- (/ (sup_T) (delta_T))) 2)))
-   (not (> (expt (1- (/ (sup_T) (delta_T))) 2)
-           (* (sup_T) (- (sup_T) (* 2 (delta_T))) (expt (delta_T) -2))))
-   (not (> (* (sup_T) (- (sup_T) (* 2 (delta_T))) (expt (delta_T) -2))
-           (* (sup_T) (expt (delta_T) -2))))
-   (not (>= (* (sup_T) (expt (delta_T) -2))
-            (* x (expt (delta_T) -2)))))
-  :hints
-  (("subgoal 5" :use (:instance ceil-root-lower-bound
-                                (x (* (expt (delta_T) -2) x))))
-   ("subgoal 4" :use lemma4)
-   ("subgoal 3" :use lemma3)
-   ("subgoal 2" :use lemma2)
-   ("subgoal 1" :use lemma1))
-  :prep-lemmas
-  ((with-arith5-nonlinear-help
-    (defruled lemma0
-      (implies (and (real/rationalp x)
-                    (real/rationalp y)
-                    (<= 0 x)
-                    (< x y))
-               (< (expt x 2) (expt y 2)))))
-   (with-arith5-nonlinear-help
-    (defruled lemma4
-      (implies (<= (expt (1- (ceil-root (* (expt (delta_T) -2) x))) 2)
-                   (expt (1- (/ (sup_T) (delta_T))) 2))
-               (<= (* (delta_T) (ceil-root (* (expt (delta_T) -2) x)))
-                   (sup_T)))
-      :use (:instance lemma0
-                      (x (1- (/ (sup_T) (delta_T))))
-                      (y (1- (ceil-root (* (expt (delta_T) -2) x)))))))
-   (with-arith5-help
-    (defruled lemma3
-      (> (expt (1- (/ (sup_T) (delta_T))) 2)
-         (* (sup_T) (- (sup_T) (* 2 (delta_T))) (expt (delta_T) -2)))))
-   (with-arith5-nonlinear-help
-    (defruled lemma2
-      (> (* (sup_T) (- (sup_T) (* 2 (delta_T))) (expt (delta_T) -2))
-         (* (sup_T) (expt (delta_T) -2)))))
-   (with-arith5-help
-    (defruled lemma1
-      (implies (<= x (sup_T))
-               (>= (* (sup_T) (expt (delta_T) -2))
-                   (* x (expt (delta_T) -2))))))))
+(local
+ (with-arith5-nonlinear-help
+  (defruled root_delta_T-lemma
+    (implies (and (real/rationalp x)
+                  (<= 0 x)
+                  (<= x (expt (sup_T) 2)))
+             (<= (* (delta_T) (ceil-root (* (expt (delta_T) -2) x)))
+                 (sup_T)))
+    :use ((:instance ceil-root-monotone
+                     (x (* (expt (delta_T) -2) x))
+                     (y (* (expt (delta_T) -2) (expt (sup_T) 2))))
+          (:instance ceil-root-sqr
+                     (x (/ (sup_T) (delta_T))))))))
 
 (with-arith5-help
  (define root_delta_T
-   ((x Arg_Stp-p))
+   ((x real/rationalp))
    :returns (result Val_T-p
-                    :hints (("goal" :in-theory (enable Val_T-p Arg_Stp-p
-                                                       root_delta_T-lemma))))
-   (if (Arg_Stp-p x)
-       (* (delta_T) (ceil-root (* x (expt (delta_T) -2))))
-     1)
+                    :hints (("goal" :in-theory (enable Val_T-p) ;Arg_Stp-p
+                             :use (:instance root_delta_T-lemma
+                                             (x (min (max (realfix x) 0) (expt (sup_T) 2)))))))
+   (b* ((x (min (max (realfix x) 0) (expt (sup_T) 2))))
+     (* (delta_T) (ceil-root (* x (expt (delta_T) -2)))))
    ///
+   (fty::deffixequiv root_delta_T)
    (with-arith5-nonlinear-help
     (defrule root_delta_T-lower-bound
      (b* ((root1 (- (root_delta_T x) (delta_T))))
