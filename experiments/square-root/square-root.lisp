@@ -371,7 +371,6 @@
  (with-arith5-nonlinear-help
   (defruled root_delta_T-lemma
     (implies (and (real/rationalp x)
-                  (<= 0 x)
                   (<= x (expt (sup_T) 2)))
              (<= (* (delta_T) (ceil-root (* (expt (delta_T) -2) x)))
                  (sup_T)))
@@ -385,28 +384,39 @@
  (define root_delta_T
    ((x real/rationalp))
    :returns (result Val_T-p
-                    :hints (("goal" :in-theory (enable Val_T-p) ;Arg_Stp-p
+                    :hints (("goal" :in-theory (enable Val_T-p)
                              :use (:instance root_delta_T-lemma
-                                             (x (min (max (realfix x) 0) (expt (sup_T) 2)))))))
-   (b* ((x (min (max (realfix x) 0) (expt (sup_T) 2))))
+                                             (x (min (realfix x) (expt (sup_T) 2)))))))
+   (b* ((x (min (realfix x) (expt (sup_T) 2))))
      (* (delta_T) (ceil-root (* x (expt (delta_T) -2)))))
    ///
    (fty::deffixequiv root_delta_T)
    (with-arith5-nonlinear-help
     (defrule root_delta_T-lower-bound
      (b* ((root1 (- (root_delta_T x) (delta_T))))
-       (implies (Arg_Stp-p x)
+       (implies (and (real/rationalp x)
+                     (< 0 x))
                 (< (expt root1 2) x)))
-     :enable Arg_Stp-p
      :use (:instance ceil-root-lower-bound
-                     (x (* x (expt (delta_T) -2))))))
+                     (x (* (min x (expt (sup_T) 2)) (expt (delta_T) -2))))))
    (with-arith5-nonlinear-help
     (defrule root_delta_T-upper-bound
+      
       (b* ((root (root_delta_T x)))
-        (implies (Arg_Stp-p x)
+        (implies (and (real/rationalp x)
+                      (<= x (expt (sup_T) 2)))
                  (<= x (expt root 2))))
       :use (:instance ceil-root-upper-bound
-                      (x (* x (expt (delta_T) -2))))))))
+                      (x (* x (expt (delta_T) -2))))))
+   (defruled root_delta_T-default-<
+     (implies (<= (realfix x) 0)
+              (equal (root_delta_T x) 0))
+     :enable ceil-root-default)
+   (defruled root_delta_T-default->
+     (implies (> (realfix x) (expt (sup_T) 2))
+              (equal (root_delta_T x) (sup_T)))
+     :use (:instance ceil-root-sqr
+                     (x (/ (sup_T) (delta_T)))))))
 
 #|
 (define root_delta_T
