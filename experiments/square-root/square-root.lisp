@@ -157,6 +157,9 @@
   :returns (fix Val_T-p)
   (if (Val_T-p x) x 0)
   ///
+  (defrule Val_T-fix-when-Val_T-p
+    (implies (Val_T-p x)
+             (equal (Val_T-fix x) x)))
   (fty::deffixtype Val_T
     :pred Val_T-p
     :fix Val_T-fix
@@ -328,13 +331,23 @@
   :rule-classes :linear)
 
 (defrule stp-type
+  (and (rationalp (stp))
+       (< 0 (stp)))
+  :rule-classes :type-prescription
+  :use stp-constraint)
+
+(defrule integerp-stp/delta_T
+  (integerp (* (/ (delta_T)) (stp)))
+  :rule-classes :type-prescription
+  :use stp-constraint)
+#|
+(defrule stp-type
   (and (Val_T-p (stp))
        (<= (delta_T) (stp))
        (integerp (/ (stp) (eps)))
        (integerp (/ (sup_T) (stp))))
-  :enable stp-constraint
-  :rule-classes :type-prescription)
-
+  :enable stp-constraint)
+|#
 (defrule stp-linear
   (and (<= (delta_T) (stp))
        (< 0 (stp)))
@@ -401,7 +414,6 @@
                      (x (* (min x (expt (sup_T) 2)) (expt (delta_T) -2))))))
    (with-arith5-nonlinear-help
     (defrule root_delta_T-upper-bound
-      
       (b* ((root (root_delta_T x)))
         (implies (and (real/rationalp x)
                       (<= x (expt (sup_T) 2)))
@@ -435,47 +447,116 @@
 )
 |#
 
-; Example of rounding. Used in operations constraints witnesses
-
-(define ceiling_Arg_Stp
-  ((x Val_T-p))
+(define ceiling-stp
+  ((x real/rationalp))
   :returns (result rationalp)
   (* (stp) (ceiling x (stp)))
   ///
-  (fty::deffixequiv ceiling_Arg_Stp)
+  (fty::deffixequiv ceiling-stp)
   (with-arith5-help
+   (defrule multiple-ceiling-stp
+     (integerp (* (/ (stp)) (ceiling-stp x)))))
+  (with-arith5-help
+   (defrule ceiling-stp-of-multiple-stp
+     (implies (integerp (/ x (stp)))
+              (equal (ceiling-stp x) (realfix x)))))
+  (acl2::with-arith5-help
+   (defrule ceiling-stp-monotone
+     (implies (<= (realfix x) (realfix y))
+              (<= (ceiling-stp x) (ceiling-stp y)))
+     :cases ((and (real/rationalp x) (real/rationalp y)))
+     :hints (("subgoal 2" :in-theory (enable ceiling)))
+     :disable rewrite-ceiling-to-floor
+     :prep-lemmas
+     ((with-arith5-nonlinear++-help
+       (defrule lemma
+         (implies (and (real/rationalp x)
+                       (real/rationalp y)
+                       (real/rationalp d)
+                       (< 0 d)
+                       (<= x y))
+                  (<= (ceiling x d) (ceiling y d))))))))
+  (with-arith5-help
+   (defrule ceiling-stp-linear
+     (and (<= (realfix x) (ceiling-stp x))
+          (< (ceiling-stp x) (+ (realfix x) (stp))))
+     :rule-classes ((:linear :trigger-terms ((ceiling-stp x)))))))
+
+(defrule Val_T-ceiling-stp
+   (implies (and (<= (- (inf_T)) (realfix x))
+                 (<= (realfix x) (sup_T)))
+            (Val_T-p (ceiling-stp x)))
+   :enable Val_T-p
+   :prep-lemmas
+   ((with-arith5-help
+     (defrule lemma1
+       (integerp (* (/ (delta_T)) (ceiling-stp x)))
+       :enable intp-*
+       :disable multiple-ceiling-stp
+       :use (multiple-ceiling-stp
+             (:instance intp-1
+                        (x (* (/ (STP)) (CEILING-STP X)))
+                        (y (* (/ (DELTA_T)) (STP)))))))
+    (defrule lemma2
+      (implies (<= (realfix x) (sup_T))
+               (<= (ceiling-stp x) (sup_T)))
+      :enable stp-constraint
+      :use ((:instance ceiling-stp-monotone
+                       (y (sup_T)))
+            (:instance ceiling-stp-of-multiple-stp
+                       (x (sup_T)))))))
+
+(defrule ceiling-stp-error
+  (implies (real/rationalp x)
+           (< (abs (+ (- x) (ceiling-stp x))) (stp)))
+  :rule-classes :linear)
+
+(with-arith5-help
+ (define ceiling_Arg_Stp
+   ((x Val_T-p))
+   :returns (result rationalp :rule-classes :type-prescription)
+   (ceiling-stp (Val_T-fix x))
+   ///
+   (fty::deffixequiv ceiling_Arg_Stp)
    (defrule Arg_Stp-ceiling_Arg_Stp
      (implies (and (< 1 x)
                    (Val_T-p x))
               (Arg_Stp-p (ceiling_Arg_Stp x)))
-     :enable Arg_Stp-p))
-  (with-arith5-help
-   (defrule ceiling_Arg_Stp-error
-     (implies (real/rationalp x)
-              (< (abs (+ (- x) (ceiling_Arg_Stp-error x))) (stp)))
-     :rule-classes :linear)))
+     :enable Arg_Stp-p)
+   (defrule ceiling_Arg_Stp-linear
+     (and (<= (Val_T-fix x) (ceiling_Arg_Stp x))
+          (< (ceiling_Arg_Stp x) (+ (Val_T-fix x) (stp))))
+     :rule-classes ((:linear :trigger-terms ((ceiling_Arg_Stp x)))))
+   (with-arith5-help
+    (defrule ceiling_Arg_Stp-error
+      (implies (Val_T-p x)
+               (< (abs (+ (- x) (ceiling_Arg_Stp x))) (stp)))
+      :rule-classes :linear))))
 
 ; Operation constraints and witnesses
 
-
-
 (encapsulate
-  (((round *) => *)
+  (((round-stp *) => *)
    ((root *) => *))
 
-  (local (defun round (x) (ceiling_Arg_Stp x)))
-  (local (defun root (x) (root_delta_T 1 x)))
+  (local (defun round-stp (x) (ceiling_Arg_Stp x)))
+  (local (defun root (x) (root_delta_T x)))
 
-  (defrule round-constraint
+  (defrule round-stp-constraint
     (implies (and (Val_T-p u)
                   (< 1 u))
-             (and (Arg_Stp-p (round u))
-                  (<= u (round u))
-                  (< (- (round u) (stp)) u))))
+             (and (Arg_Stp-p (round-stp u))
+                  (<= u (round-stp u))
+                  (< (- (round-stp u) (stp)) u))))
 
-  (defrule root-constraint
-    (implies (Arg_Stp-p v)
-             (and (Val_T-p (root v))
-                  (>= (* (root v) (root v)) v)
-                  (< (- (* (root v) (root v)) delta_T) v))))
-)
+  (with-arith5-help
+   (defrule root-constraint
+     (implies (Arg_Stp-p v)
+              (and (Val_T-p (root v))
+                   (>= (* (root v) (root v)) v)
+                   (< (expt (- (root v) (delta_T)) 2) v)))
+     :enable Arg_Stp-p
+     :use ((:instance root_delta_T-lower-bound
+                      (x v))
+           (:instance root_delta_T-upper-bound
+                      (x v))))))
