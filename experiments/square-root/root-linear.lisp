@@ -164,13 +164,121 @@
             (/ (rfix (rfix d))))
          (- (* (+ (rfix x) (- (rfix y))) (/ (rfix d))) 1)))))
 
+(with-arith5-nonlinear++-help
+(defrule lemma-6
+         (implies (and (rationalp a)
+                       (rationalp b)
+                       (< (nfix a) (nfix b)))
+                  (O< (nfix a) (nfix b)))))
+
+(defrule ceiling-lemma-25
+         (implies (and (rationalp u)
+                       (< 0 u))
+                  (O< (nfix (ceiling (- u 1) 1)) (nfix (ceiling u 1))))
+:use (ceiling-lemma-23
+     (:instance lemma-6 (a (ceiling (- u 1) 1)) (b (ceiling u 1)))))
+
+(with-arith5-nonlinear++-help
+(defrule lemma-7
+         (implies (and (rationalp a)
+                       (rationalp b)
+                       (< 1 a)
+                       (< 1 b)
+                       (< (* a a) b))
+                  (< a b))))
+
+(with-arith5-nonlinear++-help
+(defrule lemma-9
+         (implies (and (< 1 (rfix a))
+                       (< 1 (rfix b))
+                       (< (* (rfix a) (rfix a)) (rfix b)))
+                  (< (rfix a) (rfix b)))
+:use (:instance lemma-7 (a (rfix a)) (b (rfix b)))))
+
+(with-arith5-nonlinear++-help
+(defrule lemma-10
+         (implies (and (< 1 (rfix x))
+                       (< 1 (rfix y))
+                       (< (* (rfix y) (rfix y)) (rfix x)))
+                  (< 0 (+ (rfix x) (- (rfix y)))))
+:use (:instance lemma-9 (a y) (b x))))
+
+(with-arith5-nonlinear++-help
+(defrule lemma-11
+         (implies (and (< 0 (rfix d))
+                       (< 1 (rfix x))
+                       (< 1 (rfix y))
+                       (< (* (rfix y) (rfix y)) (rfix x)))
+                  (< 0 (* (+ (rfix x) (- (rfix y))) (/ (rfix d)))))
+:use lemma-10))
+
+(defrule ceiling-lemma-26
+    (implies
+        (and
+            (< 0 (rfix d))
+            (< 1 (rfix x))
+            (< 1 (rfix y))
+            (< (* (rfix y) (rfix y)) (rfix x)))
+        (O< (nfix
+                (ceiling
+                    (-
+                        (* (+ (rfix x) (- (rfix y)))
+                           (/ (rfix d)))
+                    1)
+                1))
+            (nfix
+                (ceiling
+                    (*  (+ (rfix x) (- (rfix y)))
+                        (/ (rfix d)))
+                1))))
+:use (lemma-11
+     (:instance ceiling-lemma-25
+                (u
+                    (* (+ (rfix x) (- (rfix y)))
+                       (/ (rfix d)))))))
+
+(with-arith5-nonlinear++-help
+    (defrule lemma-12
+        (implies
+            (< 0 (rfix d))
+            (=
+                (-
+                    (* (+ (rfix x) (- (rfix y)))
+                       (/ (rfix d)))
+                1)
+                (*
+                    (+
+                        (rfix (rfix x))
+                        (- (rfix (+ (rfix d) (rfix y)))))
+                    (/ (rfix (rfix d))))))))
+
+(defrule ceiling-lemma-27
+    (implies
+        (and
+            (< 0 (rfix d))
+            (< 1 (rfix x))
+            (< 1 (rfix y))
+            (< (* (rfix y) (rfix y)) (rfix x)))
+        (O< (nfix
+                (ceiling
+                    (*
+                        (+
+                            (rfix (rfix x))
+                            (- (rfix (+ (rfix d) (rfix y)))))
+                        (/ (rfix (rfix d))))
+                    1))
+            (nfix
+                (ceiling
+                    (*  (+ (rfix x) (- (rfix y)))
+                        (/ (rfix d)))
+                1))))
+:use (lemma-12 ceiling-lemma-26))
+
 (define root-linear-aux
    ((x rationalp)
     (y rationalp)
     (d rationalp))
-   :hints (("goal" :use ((:instance lemma-5 (x x) (y y) (d d))
-                         (:instance ceiling-lemma-23
-   (u  (* (+ (rfix x) (- (rfix y))) (/ (rfix d))))))))
+   :hints (("goal" :use ceiling-lemma-27))
    :measure (nfix (ceiling (/ (- (rfix x) (rfix y)) (rfix d)) 1))
    :returns (result rationalp)
    (b* ((x (rfix x))
@@ -179,6 +287,5 @@
         ((when (<= d 0)) -1)
         ((when (<= x 1)) -1)
         ((when (<= y 1)) -1)
-        ((when (<= x y)) -1)
         ((when (<= x (* y y))) y))
      (root-linear-aux x (+ d y) d)))
