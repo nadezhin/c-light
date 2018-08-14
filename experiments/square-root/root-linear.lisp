@@ -65,7 +65,7 @@
 (defrule ceiling-lemma-9
          (implies (and (rationalp u)
                        (< 0 u))
-                  (<= 1 (ceiling u 1)))))
+                  (<= 1 (ceiling u 1))))
 
 (defrule ceiling-lemma-11
          (implies (rationalp u)
@@ -288,4 +288,28 @@
         ((when (<= x 1)) -1)
         ((when (<= y 1)) -1)
         ((when (<= x (* y y))) y))
-     (root-linear-aux x (+ d y) d)))
+     (root-linear-aux x (+ d y) d))
+   ///
+(fty::deffixequiv root-linear-aux))
+
+(defrule root-linear-aux-upper-bound
+    (b* ((root (root-linear-aux x y d)))
+        (implies
+            (and
+                (< 0 (rfix d))
+                (< 1 (rfix x))
+                (< 1 (rfix y)))
+            (<= (rfix x) (* root root))))
+:enable root-linear-aux)
+
+(with-arith5-help
+    (defrule root-linear-aux-lower-bound
+        (b* ((rootd (- (root-linear-aux x y d) d)))
+            (implies
+                (and
+                    (< 0 (rfix d))
+                    (< 1 (rfix x))
+                    (< 1 (rfix y))
+                    (< (* (rfix y) (rfix y)) (rfix x)))
+                (< (* rootd rootd) (rfix x))))
+:enable root-linear-aux))
