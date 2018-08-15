@@ -326,3 +326,38 @@
                     (<= (rfix x) (rfix y)))
                 (< (* rootd rootd) (rfix x))))
 :enable root-linear-aux))
+
+(define root-linear
+    ((x rationalp)
+     (d rationalp))
+    :returns (result rationalp)
+    (b* ((x (rfix x))
+         (d (rfix d))
+         ((when (<= d 0)) -1)
+         ((when (<= x 1)) -1))
+    (root-linear-aux x (+ 1 d) d))
+    ///
+(fty::deffixequiv root-linear))
+
+(defrule root-linear-upper-bound
+    (b* ((root (root-linear x d)))
+        (implies
+            (and
+                (< 0 (rfix d))
+                (< 1 (rfix x)))
+            (<= (rfix x) (* root root))))
+:enable root-linear
+:use (:instance root-linear-aux-upper-bound (x x) (y (+ 1 d)) (d d)))
+
+(with-arith5-help
+    (defrule root-linear-lower-bound
+        (b* ((rootd (- (root-linear x d) d)))
+            (implies
+                (and
+                    (< 0 (rfix d))
+                    (< 1 (rfix x)))
+                (< (* rootd rootd) (rfix x))))
+:enable root-linear
+:cases ((< (+ 1 (rfix d)) (rfix x)) (<= (rfix x) (+ 1 (rfix d))))
+:use ((:instance root-linear-aux-lower-bound (x x) (y (+ 1 d)) (d d))
+      (:instance root-linear-aux-lower-bound-2 (x x) (y (+ 1 d)) (d d)))))
