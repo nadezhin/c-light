@@ -313,3 +313,16 @@
                     (< (* (rfix y) (rfix y)) (rfix x)))
                 (< (* rootd rootd) (rfix x))))
 :enable root-linear-aux))
+
+(with-arith5-help
+    (defrule root-linear-aux-lower-bound-2
+        (b* ((rootd (- (root-linear-aux x y d) d)))
+            (implies
+                (and
+                    (< 0 (rfix d))
+                    (< 1 (rfix x))
+                    (< 1 (rfix y))
+                    (< (* (- (rfix y) (rfix d)) (- (rfix y) (rfix d))) (rfix x))
+                    (<= (rfix x) (rfix y)))
+                (< (* rootd rootd) (rfix x))))
+:enable root-linear-aux))
