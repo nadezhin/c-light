@@ -310,20 +310,7 @@
                     (< 0 (rfix d))
                     (< 1 (rfix x))
                     (< 1 (rfix y))
-                    (< (* (rfix y) (rfix y)) (rfix x)))
-                (< (* rootd rootd) (rfix x))))
-:enable root-linear-aux))
-
-(with-arith5-help
-    (defrule root-linear-aux-lower-bound-2
-        (b* ((rootd (- (root-linear-aux x y d) d)))
-            (implies
-                (and
-                    (< 0 (rfix d))
-                    (< 1 (rfix x))
-                    (< 1 (rfix y))
-                    (< (* (- (rfix y) (rfix d)) (- (rfix y) (rfix d))) (rfix x))
-                    (<= (rfix x) (rfix y)))
+                    (< (* (- (rfix y) (rfix d)) (- (rfix y) (rfix d))) (rfix x)))
                 (< (* rootd rootd) (rfix x))))
 :enable root-linear-aux))
 
@@ -358,6 +345,5 @@
                     (< 1 (rfix x)))
                 (< (* rootd rootd) (rfix x))))
 :enable root-linear
-:cases ((< (+ 1 (rfix d)) (rfix x)) (<= (rfix x) (+ 1 (rfix d))))
-:use ((:instance root-linear-aux-lower-bound (x x) (y (+ 1 d)) (d d))
-      (:instance root-linear-aux-lower-bound-2 (x x) (y (+ 1 d)) (d d)))))
+:use ((:instance
+       root-linear-aux-lower-bound (x x) (y (+ 1 d)) (d d)))))
