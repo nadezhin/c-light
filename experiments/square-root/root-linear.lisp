@@ -539,7 +539,7 @@
               root-linear-lower-bounded
               (:instance lemma-aux-2
                   (a (- (root-linear x d) d))
-                  (b x)))))
+                  (b x)))
     )
 )
 
