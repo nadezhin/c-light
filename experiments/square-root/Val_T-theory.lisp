@@ -142,6 +142,23 @@
   (Val_T-p (delta_T))
   :enable Val_T-p)
 
+(defrule Val_T-1
+  (Val_T-p 1)
+  :enable Val_T-when-integer)
+
+(with-arith5-help
+(defrule Val_T-1-delta_T
+  (Val_T-p (+ 1 (delta_T)))
+  :enable (delta_T-constraint
+           inf_T-constraint
+           sup_T-constraint
+           Val_T-1 Val_T-delta_T Val_T-p)))
+
+(defrule integer-1-delta_T
+    (integerp (* (/ (delta_T)) (+ 1 (delta_T))))
+    :use Val_T-1-delta_T
+    :enable Val_T-p)
+
 (defrule Val_T-sup_T
   (Val_T-p (sup_T))
   :enable (Val_T-p sup_T-constraint))

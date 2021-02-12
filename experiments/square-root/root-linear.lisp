@@ -292,6 +292,84 @@
    ///
 (fty::deffixequiv root-linear-aux))
 
+(with-arith5-help
+    (defrule root-linear-aux-lemma
+        (implies
+            (and
+                (rationalp x)
+                (rationalp y)
+                (rationalp d)
+                (< 1 x)
+                (< 1 y)
+                (< 0 d)
+                (integerp (* (/ d) y))
+            )
+            (integerp
+                (*
+                    (/ d)
+                    (root-linear-aux x y d)
+                )
+            )
+        )
+        :enable root-linear-aux 
+        :induct (root-linear-aux x y d)
+    )
+)
+
+(with-arith5-help
+    (defrule root-linear-aux-in-grid
+        (implies
+            (and
+                (rationalp x)
+                (rationalp d)
+                (< 1 x)
+                (< 0 d)
+                (integerp (* (/ d) (+ 1 d)))
+            )
+            (integerp
+                (*
+                    (/ d)
+                    (root-linear-aux x (+ 1 d) d)
+                )
+            )
+        )
+        :use (:instance root-linear-aux-lemma (x x) (y (+ 1 d)) (d d))
+    )
+)
+
+(with-arith5-help
+    (defrule root-linear-aux-bounded
+        (implies
+            (and
+                (rationalp x)
+                (rationalp y)
+                (rationalp d)
+                (< 1 x)
+                (< 1 y)
+                (< 0 d)
+            )
+            (<= y (root-linear-aux x y d))
+        )
+        :enable root-linear-aux 
+        :induct (root-linear-aux x y d)
+    )
+)
+
+(with-arith5-help
+    (defrule root-linear-aux-bound
+        (implies
+            (and
+                (rationalp x)
+                (rationalp d)
+                (< 1 x)
+                (< 0 d)
+            )
+            (<= (+ 1 d) (root-linear-aux x (+ 1 d) d))
+        )
+        :use (:instance root-linear-aux-bounded (x x) (y (+ 1 d)) (d d))
+    )
+)
+
 (defrule root-linear-aux-upper-bound
     (b* ((root (root-linear-aux x y d)))
         (implies
@@ -310,19 +388,271 @@
                     (< 0 (rfix d))
                     (< 1 (rfix x))
                     (< 1 (rfix y))
-                    (< (* (rfix y) (rfix y)) (rfix x)))
+                    (< (* (- (rfix y) (rfix d)) (- (rfix y) (rfix d))) (rfix x)))
                 (< (* rootd rootd) (rfix x))))
 :enable root-linear-aux))
 
+(define root-linear
+    ((x rationalp)
+     (d rationalp))
+    :returns (result rationalp)
+    (b* ((x (rfix x))
+         (d (rfix d))
+         ((when (<= d 0)) -1)
+         ((when (<= x 1)) -1))
+    (root-linear-aux x (+ 1 d) d))
+    ///
+(fty::deffixequiv root-linear))
+
 (with-arith5-help
-    (defrule root-linear-aux-lower-bound-2
-        (b* ((rootd (- (root-linear-aux x y d) d)))
+    (defrule root-linear-in-grid
+        (implies
+            (and
+                (rationalp x)
+                (rationalp d)
+                (< 1 x)
+                (< 0 d)
+                (integerp (* (/ d) (+ 1 d)))
+            )
+            (integerp
+                (*
+                    (/ d)
+                    (root-linear x d)
+                )
+            )
+        )
+        :enable root-linear
+        :use root-linear-aux-in-grid
+    )
+)
+
+(defrule root-linear-upper-bound
+    (b* ((root (root-linear x d)))
+        (implies
+            (and
+                (< 0 (rfix d))
+                (< 1 (rfix x)))
+            (<= (rfix x) (* root root))))
+:enable root-linear
+:use (:instance root-linear-aux-upper-bound (x x) (y (+ 1 d)) (d d)))
+
+(with-arith5-help
+    (defrule root-linear-lower-bound
+        (b* ((rootd (- (root-linear x d) d)))
             (implies
                 (and
                     (< 0 (rfix d))
-                    (< 1 (rfix x))
-                    (< 1 (rfix y))
-                    (< (* (- (rfix y) (rfix d)) (- (rfix y) (rfix d))) (rfix x))
-                    (<= (rfix x) (rfix y)))
+                    (< 1 (rfix x)))
                 (< (* rootd rootd) (rfix x))))
-:enable root-linear-aux))
+:enable root-linear
+:use ((:instance
+       root-linear-aux-lower-bound (x x) (y (+ 1 d)) (d d)))))
+
+(with-arith5-help
+    (defrule root-linear-bounded
+        (implies
+            (and
+                (rationalp x)
+                (rationalp d)
+                (< 1 x)
+                (< 0 d)
+            )
+            (<= (+ 1 d) (root-linear x d))
+        )
+        :enable root-linear
+        :use root-linear-aux-bound
+    )
+)
+
+(with-arith5-nonlinear-help
+    (defrule lemma-aux-1
+        (implies
+            (and
+                (rationalp x)
+                (rationalp d)
+                (< 0 d)
+                (<= (+ 1 d) x)
+            )
+            (< 1 x)
+        )
+    )
+)
+
+(with-arith5-help
+    (defrule root-linear-bound
+        (implies
+            (and
+                (rationalp x)
+                (rationalp d)
+                (< 1 x)
+                (< 0 d)
+            )
+            (< 1 (root-linear x d))
+        )
+        :use (root-linear-bounded
+             (:instance lemma-aux-1
+               (x (root-linear x d)) (d d)))
+    )
+)
+
+(with-arith5-nonlinear-help
+    (defrule lemma-aux-2
+        (implies
+            (and
+                (rationalp a)
+                (rationalp b)
+                (<= 1 a)
+                (< (* a a) b)
+            )
+            (< a b)
+        )
+    )
+)
+
+(with-arith5-help
+    (defrule root-linear-lower-bounded
+        (implies
+            (and
+                (rationalp x)
+                (rationalp d)
+                (< 1 x)
+                (< 0 d)
+            )
+            (<= 1 (- (root-linear x d) d))
+        )
+        :use root-linear-bounded
+    )
+)
+
+(with-arith5-help
+    (defrule root-linear-lower-bound-lemma
+        (implies
+            (and
+                (rationalp x)
+                (rationalp d)
+                (< 1 x)
+                (< 0 d)
+            )
+            (< (- (root-linear x d) d) x)
+        )
+        :use (root-linear-lower-bound
+              root-linear-lower-bounded
+              (:instance lemma-aux-2
+                  (a (- (root-linear x d) d))
+                  (b x)))
+    )
+)
+
+(with-arith5-nonlinear-help
+    (defrule aux-lemma-1
+        (implies
+            (and
+                (integerp a)
+                (integerp b)
+                (not (= a b))
+            )
+            (<= 1 (abs (- a b)))
+        )
+    )
+)
+
+(with-arith5-nonlinear-help
+    (defrule aux-lemma-2
+        (implies
+            (and
+                (rationalp x)
+                (rationalp y)
+                (rationalp d)
+                (< 1 x)
+                (< 1 y)
+                (< 0 d)
+                (integerp (* (/ d) x))
+                (integerp (* (/ d) y))
+                (not (= x y))
+            )
+            (<= d (abs (- x y)))
+        )
+        :use (:instance aux-lemma-1 (a (/ x d)) (b (/ y d)))
+    )
+)
+
+(with-arith5-nonlinear-help
+    (defrule aux-lemma
+        (implies
+            (and
+                (rationalp a)
+                (rationalp b)
+                (rationalp d)
+                (< 1 a)
+                (< 1 b)
+                (< 0 d)
+                (integerp (* (/ d) a))
+                (integerp (* (/ d) b))
+                (< (- a d) b)
+            )
+            (<= a b)
+        )
+        :cases ((< a b) (= a b) (> a b))
+        :enable abs
+        :hints (("Subgoal 1"
+                :use (:instance aux-lemma-2
+                        (x a) (y b) (d d))))
+    )
+)
+
+(with-arith5-nonlinear-help
+    (defrule root-linear-bound-lemma
+        (implies
+            (and
+                (rationalp x)
+                (rationalp d)
+                (< 1 x)
+                (< 0 d)
+                (integerp (* (/ d) (+ 1 d)))
+                (integerp (* (/ d) x))
+            )
+            (<= (root-linear x d) x)
+        )
+        :use (root-linear-bound
+              root-linear-lower-bound-lemma
+              root-linear-in-grid
+              (:instance aux-lemma
+                  (a (root-linear x d)) (b x) (d d)))
+    )
+)
+
+(with-arith5-nonlinear-help
+    (defrule auxiliary-lemma
+        (implies
+            (and
+                (rationalp a)
+                (rationalp b)
+                (<= b s)
+                (<= a b)
+            )
+            (<= a s)
+        )
+    )
+)
+
+(with-arith5-nonlinear-help
+    (defrule root-linear-s-bound
+        (implies
+            (and
+                (rationalp x)
+                (rationalp d)
+                (rationalp s)
+                (< 1 x)
+                (< 0 d)
+                (<= x s)
+                (integerp (* (/ d) (+ 1 d)))
+                (integerp (* (/ d) x))
+            )
+            (<= (root-linear x d) s)
+        )
+        :use (root-linear-bound-lemma
+              (:instance auxiliary-lemma
+               (a (root-linear x d)) (b x) (s s)))
+    )
+)
+
